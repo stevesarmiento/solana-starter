@@ -1,22 +1,19 @@
-import { docsConfig } from "@/config/docs"
-import { DocsSidebarNav } from "./_components/sidebar-nav"
-import DashboardLayout from "./_components/DashboardLayout"
+import { DocsLayout } from 'fumadocs-ui/layouts/docs';
+import type { ReactNode } from 'react';
+import { baseOptions } from '@/app/layout.config';
+import { source } from '@/lib/source';
 
-interface DocsLayoutProps {
-  children: React.ReactNode
-}
-
-export default function DocsLayout({ children }: DocsLayoutProps) {
+export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <DashboardLayout>
-      <div className="flex">
-        <aside className="hidden md:block">
-          <DocsSidebarNav items={docsConfig.sidebarNav} />
-        </aside>
-        <main className="hide-scrollbar">
-          {children}
-        </main>
-      </div>
-    </DashboardLayout>
-  )
+    <DocsLayout 
+      tree={source.pageTree} 
+      {...baseOptions}
+      nav={{
+        ...baseOptions.nav,
+        title: 'Documentation'
+      }}
+    >
+      {children}
+    </DocsLayout>
+  );
 }
