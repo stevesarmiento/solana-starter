@@ -4,11 +4,9 @@ import { useSolanaChain, useSolanaRpc } from '@/solana';
 import { IconExclamationmarkTriangle } from 'symbols-react';
 import { address } from '@solana/web3.js';
 import type { UiWalletAccount } from '@wallet-standard/react';
-import { useMemo } from 'react';
-import useSWRSubscription from 'swr/subscription';
 
 import { getWalletErrorMessage } from './wallet/get-wallet-error-message';
-import { balanceSubscribe } from '../functions/balance';
+import { useBalance } from '../functions/balance';
 import { WalletErrorDialog } from './wallet/wallet-error-dialog';
 
 import {
@@ -21,23 +19,23 @@ type Props = Readonly<{
     account: UiWalletAccount;
 }>;
 
-const seenErrors = new WeakSet();
-
 export function Balance({ account }: Props) {
     const { chain } = useSolanaChain();
     const { rpc, rpcSubscriptions } = useSolanaRpc();
-    const subscribe = useMemo(() => balanceSubscribe.bind(null, rpc, rpcSubscriptions), [rpc, rpcSubscriptions]);
-    const { data: lamports, error } = useSWRSubscription({ address: address(account.address), chain: chain.chain }, subscribe);
+    const { data: lamports, error, isLoading } = useBalance(
+        rpc,
+        rpcSubscriptions,
+        address(account.address),
+        chain.chain
+    );
 
-    if (error && !seenErrors.has(error)) {
+    if (error) {
         return (
             <>
                 <WalletErrorDialog
                     error={error}
                     key={`${account.address}:${chain.chain}`}
-                    onClose={() => {
-                        seenErrors.add(error);
-                    }}
+                    onClose={() => {}}
                     title="Failed to fetch account balance"
                 />
                 <HoverCard>
@@ -52,7 +50,7 @@ export function Balance({ account }: Props) {
                 </HoverCard>
             </>
         );
-    } else if (lamports == null) {
+    } else if (isLoading || lamports == null) {
         return <span className="text-muted-foreground font-mono">&ndash;</span>;
     } else {
         const formattedSolValue = new Intl.NumberFormat(undefined, { maximumFractionDigits: 5 }).format(

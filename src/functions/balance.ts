@@ -1,73 +1,69 @@
 import { AccountNotificationsApi, Address, GetBalanceApi, Lamports, Rpc, RpcSubscriptions } from '@solana/web3.js';
-import { SWRSubscription } from 'swr/subscription';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
 const EXPLICIT_ABORT_TOKEN = Symbol();
 
 /**
- * This is an example of a strategy to fetch some account data and to keep it up to date over time.
- * It's implemented as an SWR subscription function (https://swr.vercel.app/docs/subscription) but
- * the approach is generalizable.
- *
- *     1. Fetch the current account state and publish it to the consumer
- *     2. Subscribe to account data notifications and publish them to the consumer
- *
- * At all points in time, check that the update you received -- no matter from where -- is from a
- * higher slot (ie. is newer) than the last one you published to the consumer.
+ * Custom hook to fetch and subscribe to account balance updates
  */
-export function balanceSubscribe(
+export function useBalance(
     rpc: Rpc<GetBalanceApi>,
     rpcSubscriptions: RpcSubscriptions<AccountNotificationsApi>,
-    ...subscriptionArgs: Parameters<SWRSubscription<{ address: Address }, Lamports>>
+    address: Address,
+    chain: string
 ) {
-    const [{ address }, { next }] = subscriptionArgs;
-    const abortController = new AbortController();
-    // Keep track of the slot of the last-published update.
-    let lastUpdateSlot = BigInt(-1);
-    // Fetch the current balance of this account.
-    rpc.getBalance(address, { commitment: 'confirmed' })
-        .send({ abortSignal: abortController.signal })
-        .then(({ context: { slot }, value: lamports }) => {
-            if (slot < lastUpdateSlot) {
-                // The last-published update (ie. from the subscription) is newer than this one.
-                return;
-            }
-            lastUpdateSlot = slot;
-            next(null /* err */, lamports /* data */);
-        })
-        .catch(e => {
-            if (e !== EXPLICIT_ABORT_TOKEN) {
-                next(e /* err */);
-            }
-        });
-    // Subscribe for updates to that balance.
-    rpcSubscriptions
-        .accountNotifications(address)
-        .subscribe({ abortSignal: abortController.signal })
-        .then(async accountInfoNotifications => {
-            try {
-                for await (const {
-                    context: { slot },
-                    value: { lamports },
-                } of accountInfoNotifications) {
-                    if (slot < lastUpdateSlot) {
-                        // The last-published update (ie. from the initial fetch) is newer than this
-                        // one.
-                        continue;
+    const queryClient = useQueryClient();
+    const queryKey = ['balance', address.toString(), chain];
+
+    return useQuery({
+        queryKey,
+        queryFn: async ({ signal }) => {
+            let lastUpdateSlot = BigInt(-1);
+            let latestLamports: Lamports | undefined;
+
+            // Set up subscription first to not miss updates
+            const subscriptionPromise = rpcSubscriptions
+                .accountNotifications(address)
+                .subscribe({ abortSignal: signal })
+                .then(async accountInfoNotifications => {
+                    try {
+                        for await (const {
+                            context: { slot },
+                            value: { lamports },
+                        } of accountInfoNotifications) {
+                            if (slot > lastUpdateSlot) {
+                                lastUpdateSlot = slot;
+                                latestLamports = lamports;
+                                // Update query data
+                                queryClient.setQueryData(queryKey, lamports);
+                            }
+                        }
+                    } catch (e) {
+                        if (e !== EXPLICIT_ABORT_TOKEN) {
+                            throw e;
+                        }
                     }
-                    lastUpdateSlot = slot;
-                    next(null /* err */, lamports /* data */);
-                }
-            } catch (e) {
-                next(e /* err */);
+                });
+
+            // Get initial balance
+            const { context: { slot }, value: lamports } = await rpc
+                .getBalance(address, { commitment: 'confirmed' })
+                .send({ abortSignal: signal });
+
+            if (slot > lastUpdateSlot) {
+                lastUpdateSlot = slot;
+                latestLamports = lamports;
             }
-        })
-        .catch(e => {
-            if (e !== EXPLICIT_ABORT_TOKEN) {
-                next(e /* err */);
-            }
-        });
-    // Return a cleanup callback that aborts the RPC call/subscription.
-    return () => {
-        abortController.abort(EXPLICIT_ABORT_TOKEN);
-    };
+
+            // Cleanup subscription on abort
+            signal.addEventListener('abort', () => {
+                subscriptionPromise.catch(() => {});
+            });
+
+            return latestLamports ?? lamports;
+        },
+        staleTime: Infinity, // Keep data fresh indefinitely since we're using subscriptions
+        refetchOnWindowFocus: false, // Disable automatic refetching since we're using subscriptions
+        refetchOnReconnect: false,
+    });
 }

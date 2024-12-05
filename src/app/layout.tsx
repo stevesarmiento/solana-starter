@@ -8,7 +8,7 @@ import { CHAIN_CONFIG_DEVNET, CHAIN_CONFIG_LOCAL, CHAIN_CONFIG_TESTNET, SolanaPr
 import PlausibleProvider from 'next-plausible'
 import { Toaster } from "sonner";
 import { baseOptions } from './layout.config'
-
+import { QueryProvider } from '@/providers/query-provider'
 export const metadata: Metadata = {
   title: "Next Solana Starter",
   description: "Production Ready Solana Starter",
@@ -27,6 +27,8 @@ export default function RootLayout({
       </head>
       <body>
         <RootProvider {...baseOptions}>
+        <QueryProvider>
+
           <ThemeProvider>
             <SolanaProvider chains={[CHAIN_CONFIG_DEVNET, CHAIN_CONFIG_LOCAL, CHAIN_CONFIG_TESTNET]}>
               <Nav/>
@@ -34,6 +36,7 @@ export default function RootLayout({
             </SolanaProvider>
             <Toaster />
           </ThemeProvider>
+          </QueryProvider>
         </RootProvider>
       </body>
     </html>
