@@ -17,7 +17,7 @@ const LOGOS = [
   { name: 'Shadcn UI', dark: '/logo-shadcn.png', light: '/logo-shadcn-dark.png' },
   { name: 'Solana', dark: '/logo-solana.png', light: '/logo-solana-dark.png' },
   { name: 'Plausible', dark: '/logo-plausible.png', light: '/logo-plausible-dark.png' },
-  { name: 'ContentCollections', dark: '/logo-content.png', light: '/logo-content-dark.png' },
+  { name: 'Fumadocs', dark: '/logo-fuma.png', light: '/logo-fuma-dark.png' },
 ] as const;
 
 export function LandingPage() {
