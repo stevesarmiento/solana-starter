@@ -5,14 +5,7 @@ import { source } from '@/lib/source';
 
 export default function Layout({ children }: { children: ReactNode }) {
   return (
-    <DocsLayout 
-      tree={source.pageTree} 
-      {...baseOptions}
-      nav={{
-        ...baseOptions.nav,
-        title: 'Documentation'
-      }}
-    >
+    <DocsLayout tree={source.pageTree} {...baseOptions}>
       {children}
     </DocsLayout>
   );

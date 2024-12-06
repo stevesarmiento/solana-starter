@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "fumadocs-mdx && next build",
     "start": "next start",
     "lint": "next lint",
     "postinstall": "fumadocs-mdx"
@@ -69,9 +69,6 @@
     "react-hook-form": "^7.53.2",
     "react-resizable-panels": "^2.1.7",
     "recharts": "^2.14.1",
-    "remark": "^15.0.1",
-    "remark-gfm": "^4.0.0",
-    "remark-html": "^16.0.1",
     "sonner": "^1.7.0",
     "swr": "^2.2.5",
     "symbols-react": "^1.2.3",
